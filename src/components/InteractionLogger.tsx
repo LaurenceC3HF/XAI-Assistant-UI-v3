@@ -147,7 +147,7 @@ export const InteractionLogger: React.FC<InteractionLoggerProps> = ({
     return (
       <button
         onClick={() => setIsVisible(true)}
-        className="fixed bottom-4 right-4 bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full shadow-lg transition-all duration-200 z-50"
+        className="fixed top-4 left-4 bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full shadow-lg transition-all duration-200 z-50"
         title="View Interaction Analytics"
       >
         <BarChart3 className="w-5 h-5" />
