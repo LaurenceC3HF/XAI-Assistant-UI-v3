@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { ChatMessage, XAIExplanation } from '../types';
-import { Send, MessageSquare, AlertCircle, User, Bot, Clock } from 'lucide-react';
+import { Send, MessageSquare, AlertCircle, User, Bot, Clock, Info } from 'lucide-react';
+
+// Tab indicator mapping (colors match previous chip scheme)
+const TAB_DOT = {
+  insight: { color: "bg-blue-500", label: "Insight" },
+  reasoning: { color: "bg-yellow-400", label: "Reasoning" },
+  projection: { color: "bg-purple-500", label: "Projection" }
+};
 
 interface ChatPanelProps {
   chatHistory: ChatMessage[];
@@ -10,7 +17,6 @@ interface ChatPanelProps {
   onSendMessage: (message: string) => Promise<XAIExplanation | null>;
   onHistoryClick: (item: ChatMessage) => void;
   onClearError: () => void;
-  onSuggestedPromptClick?: (prompt: string) => void;
   chatContainerRef: React.RefObject<HTMLDivElement>;
 }
 
@@ -22,7 +28,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   onSendMessage,
   onHistoryClick,
   onClearError,
-  onSuggestedPromptClick,
   chatContainerRef
 }) => {
   const [userInput, setUserInput] = useState('');
@@ -49,11 +54,6 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
       e.preventDefault();
       handleSend();
     }
-  };
-
-  const handleSuggestedPromptClick = (prompt: string) => {
-    onSuggestedPromptClick?.(prompt);
-    setUserInput(prompt);
   };
 
   const formatTime = (timestamp: string) => {
@@ -95,6 +95,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           const content = isUser 
             ? item.details.query 
             : item.details.response?.response;
+
+          // Get defaultTab for AI responses
+          let defaultTab, dotInfo;
+          if (!isUser && item.details.response) {
+            defaultTab = item.details.response.defaultTab || "insight";
+            dotInfo = TAB_DOT[defaultTab];
+          }
           
           return (
             <div key={index} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -103,6 +110,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 className={`
                   max-w-[85%] group transition-all duration-200
                   ${!isUser ? 'cursor-pointer hover:scale-105' : ''}
+                  relative
                 `}
               >
                 <div className={`
@@ -112,6 +120,20 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                     : 'bg-slate-700/80 hover:bg-slate-700 text-gray-100 mr-4'
                   }
                 `}>
+                  {/* Small tab dot indicator for AI responses */}
+                  {!isUser && dotInfo && (
+                    <span
+                      className={`absolute top-2 right-2 flex items-center group`}
+                    >
+                      <span 
+                        className={`w-2 h-2 rounded-full ${dotInfo.color} border border-white/60 shadow`}
+                        title={dotInfo.label}
+                      />
+                      <span className="absolute top-4 right-0 opacity-0 group-hover:opacity-100 bg-slate-900 text-xs text-white rounded px-2 py-1 pointer-events-none z-10 transition-opacity duration-150 shadow-lg whitespace-nowrap">
+                        {dotInfo.label}
+                      </span>
+                    </span>
+                  )}
                   <div className="flex items-start space-x-2">
                     <div className="flex-shrink-0 mt-1">
                       {isUser ? (
@@ -162,7 +184,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
               {suggestedPrompts.map((prompt, i) => (
                 <button
                   key={i}
-                  onClick={() => handleSuggestedPromptClick(prompt)}
+                  onClick={() => setUserInput(prompt)}
                   disabled={isLoading}
                   className="px-3 py-1 bg-slate-700/50 hover:bg-slate-600/50 text-xs text-gray-300 hover:text-white rounded-full transition-all duration-200 border border-slate-600/50 hover:border-slate-500/50"
                 >
