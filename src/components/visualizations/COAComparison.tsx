@@ -1,52 +1,33 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { CourseOfAction } from '../../types';
 import { VisualCard } from './VisualCard';
 import { Target, AlertTriangle, CheckCircle } from 'lucide-react';
 
 interface COAComparisonProps {
   coas: CourseOfAction[];
-  onVisualizationHover?: (elementId: string, visualizationType: string) => () => void;
-  onVisualizationClick?: (elementId: string, visualizationType: string) => void;
   onCOAInteraction?: (coaId: string, coaName: string, interactionType: 'hover' | 'click') => void;
+  onVisualizationClick?: (elementId: string, visualizationType: string) => void;
 }
 
-export const COAComparison: React.FC<COAComparisonProps> = ({ 
+export const COAComparison: React.FC<COAComparisonProps> = ({
   coas,
-  onVisualizationHover,
-  onVisualizationClick,
-  onCOAInteraction
+  onCOAInteraction,
+  onVisualizationClick
 }) => {
-  const cleanupFunctions = useRef<Record<string, (() => void) | null>>({});
-
-  if (!coas) return null;
-
-  const getScoreColor = (score: number) => {
-    if (score >= 70) return 'text-green-400 bg-green-500/20';
-    if (score >= 40) return 'text-yellow-400 bg-yellow-500/20';
-    return 'text-red-400 bg-red-500/20';
-  };
-
-  const getBorderColor = (coaId: string, score: number) => {
-    if (coaId === 'coa2') return 'border-blue-500/70';
-    if (score >= 70) return 'border-green-500/50';
-    if (score >= 40) return 'border-yellow-500/50';
-    return 'border-red-500/50';
+  // Remove all hover/animate/transition/scale classes
+  const getBorderColor = (id: string, recommendationScore: number) => {
+    if (id === 'coa2') return 'border-blue-500';
+    if (recommendationScore >= 0.75) return 'border-green-500';
+    if (recommendationScore <= 0.3) return 'border-red-500';
+    return 'border-slate-500';
   };
 
   const handleMouseEnterCOA = (coa: CourseOfAction) => {
     onCOAInteraction?.(coa.id, coa.name, 'hover');
-    const cleanup = onVisualizationHover?.(coa.id, 'coa_card');
-    if (cleanup) {
-      cleanupFunctions.current[coa.id] = cleanup;
-    }
   };
 
   const handleMouseLeaveCOA = (coa: CourseOfAction) => {
-    const cleanup = cleanupFunctions.current[coa.id];
-    if (cleanup) {
-      cleanup();
-      cleanupFunctions.current[coa.id] = null;
-    }
+    onCOAInteraction?.(coa.id, coa.name, 'hover');
   };
 
   const handleCOAClick = (coa: CourseOfAction) => {
@@ -62,8 +43,7 @@ export const COAComparison: React.FC<COAComparisonProps> = ({
             key={coa.id}
             className={`
               relative bg-slate-900/60 border-2 rounded-lg p-4
-              transition-all duration-300 ease-in-out cursor-pointer
-              hover:transform hover:scale-105 hover:shadow-lg
+              cursor-pointer
               ${getBorderColor(coa.id, coa.recommendationScore)}
             `}
             onMouseEnter={() => handleMouseEnterCOA(coa)}
@@ -113,3 +93,9 @@ export const COAComparison: React.FC<COAComparisonProps> = ({
     </VisualCard>
   );
 };
+
+function getScoreColor(score: number): string {
+  if (score >= 0.75) return 'bg-green-800 text-green-400';
+  if (score <= 0.3) return 'bg-red-800 text-red-400';
+  return 'bg-slate-800 text-slate-200';
+}
