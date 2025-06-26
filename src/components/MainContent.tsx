@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { XAIExplanation, TabType, COAScenario } from '../types';
 import { InsightTab } from './tabs/InsightTab';
 import { ReasoningTab } from './tabs/ReasoningTab';
@@ -8,21 +8,75 @@ interface MainContentProps {
   explanation: XAIExplanation;
   activeTab: TabType;
   scenario: COAScenario;
+  onVisualizationHover?: (elementId: string, visualizationType: string) => () => void;
+  onVisualizationClick?: (elementId: string, visualizationType: string) => void;
+  onCOAInteraction?: (coaId: string, coaName: string, interactionType: 'hover' | 'click') => void;
+  onScrollEvent?: (scrollPosition: number) => void;
 }
 
 export const MainContent: React.FC<MainContentProps> = ({ 
   explanation, 
   activeTab, 
-  scenario 
+  scenario,
+  onVisualizationHover,
+  onVisualizationClick,
+  onCOAInteraction,
+  onScrollEvent
 }) => {
+  // Track scroll events
+  useEffect(() => {
+    if (!onScrollEvent) return;
+
+    let scrollTimeout: NodeJS.Timeout;
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const scrollPosition = target.scrollTop;
+      
+      // Debounce scroll events
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        onScrollEvent(scrollPosition);
+      }, 100);
+    };
+
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.addEventListener('scroll', handleScroll);
+      return () => {
+        mainElement.removeEventListener('scroll', handleScroll);
+        clearTimeout(scrollTimeout);
+      };
+    }
+  }, [onScrollEvent]);
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'insight':
-        return <InsightTab explanation={explanation} scenario={scenario} />;
+        return (
+          <InsightTab 
+            explanation={explanation} 
+            scenario={scenario}
+            onVisualizationHover={onVisualizationHover}
+            onVisualizationClick={onVisualizationClick}
+            onCOAInteraction={onCOAInteraction}
+          />
+        );
       case 'reasoning':
-        return <ReasoningTab explanation={explanation} />;
+        return (
+          <ReasoningTab 
+            explanation={explanation}
+            onVisualizationHover={onVisualizationHover}
+            onVisualizationClick={onVisualizationClick}
+          />
+        );
       case 'projection':
-        return <ProjectionTab explanation={explanation} />;
+        return (
+          <ProjectionTab 
+            explanation={explanation}
+            onVisualizationHover={onVisualizationHover}
+            onVisualizationClick={onVisualizationClick}
+          />
+        );
       default:
         return null;
     }
