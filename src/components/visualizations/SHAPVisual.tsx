@@ -1,93 +1,36 @@
-import React, { useRef } from 'react';
-import { VisualCard } from './VisualCard';
-import { TrendingUp, TrendingDown } from 'lucide-react';
-
-interface SHAPVisualProps {
-  shapData?: Record<string, number>;
-  onVisualizationHover?: (elementId: string, visualizationType: string) => () => void;
-  onVisualizationClick?: (elementId: string, visualizationType: string) => void;
-}
-
-export const SHAPVisual: React.FC<SHAPVisualProps> = ({ 
-  shapData,
-  onVisualizationHover,
-  onVisualizationClick
-}) => {
-  const cleanupFunctions = useRef<Record<string, (() => void) | null>>({});
-
-  if (!shapData) return null;
-
-  const features = Object.entries(shapData).sort(([, a], [, b]) => Math.abs(b) - Math.abs(a));
-  const maxAbsValue = Math.max(...features.map(([, v]) => Math.abs(v)));
-
-  const handleMouseEnterFeature = (feature: string) => {
-    const cleanup = onVisualizationHover?.(feature, 'shap_feature');
-    if (cleanup) {
-      cleanupFunctions.current[feature] = cleanup;
-    }
-  };
-
-  const handleMouseLeaveFeature = (feature: string) => {
-    const cleanup = cleanupFunctions.current[feature];
-    if (cleanup) {
-      cleanup();
-      cleanupFunctions.current[feature] = null;
-    }
-  };
-
-  const handleFeatureClick = (feature: string) => {
-    onVisualizationClick?.(feature, 'shap_feature');
-  };
-
-  return (
-    <VisualCard>
-      <div className="flex items-center mb-6">
-        <TrendingUp className="w-6 h-6 text-teal-400 mr-3" />
-        <h3 className="text-lg font-semibold text-teal-300">
-          SHAP Feature Importance
-        </h3>
-      </div>
-      
-      <div className="space-y-4">
-        {features.map(([feature, value]) => (
-          <div 
-            key={feature} 
-            className="group cursor-pointer"
-            onMouseEnter={() => handleMouseEnterFeature(feature)}
-            onMouseLeave={() => handleMouseLeaveFeature(feature)}
-            onClick={() => handleFeatureClick(feature)}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
-                {feature}
-              </span>
-              <div className="flex items-center">
-                {value > 0 ? (
-                  <TrendingUp className="w-4 h-4 text-green-400 mr-1" />
-                ) : (
-                  <TrendingDown className="w-4 h-4 text-red-400 mr-1" />
-                )}
-                <span className={`text-sm font-bold ${value > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {value.toFixed(2)}
-                </span>
-              </div>
-            </div>
-            
-            <div className="relative bg-slate-700/50 rounded-full h-3 overflow-hidden">
-              <div
-                style={{ width: `${(Math.abs(value) / maxAbsValue) * 100}%` }}
-                className={`
-                  h-full transition-all duration-500 ease-out
-                  ${value > 0 
-                    ? 'bg-gradient-to-r from-green-500 to-green-400' 
-                    : 'bg-gradient-to-r from-red-500 to-red-400'
-                  }
-                `}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </VisualCard>
-  );
+// Add at the top:
+const FEATURE_GROUPS = {
+  Performance: ['Response Time', 'Success Probability'],
+  Risk: ['Collateral Risk'],
+  Resource: ['Resource Availability'],
+  // ...add your own
 };
+const FEATURE_EXPLANATIONS = {
+  'Response Time': 'How quickly the system responds...',
+  'Success Probability': 'Likelihood of mission success...',
+  // ...add your own
+};
+
+// In your render:
+{Object.entries(FEATURE_GROUPS).map(([group, features]) => (
+  <div key={group}>
+    <h4 className="font-semibold text-gray-400 mb-2">{group}</h4>
+    {features
+      .filter(f => shapData[f] !== undefined)
+      .map(feature => (
+        <div
+          key={feature}
+          className="group cursor-pointer relative"
+          onMouseEnter={() => setTooltip(feature)}
+          onMouseLeave={() => setTooltip(null)}
+        >
+          {/* ...existing feature bar rendering... */}
+          {tooltip === feature && (
+            <div className="absolute left-full top-1/2 ml-2 p-2 rounded bg-black text-white text-xs w-48">
+              {FEATURE_EXPLANATIONS[feature] || "No explanation available."}
+            </div>
+          )}
+        </div>
+      ))}
+  </div>
+))}
