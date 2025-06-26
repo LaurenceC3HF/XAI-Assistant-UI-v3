@@ -24,7 +24,7 @@ export const ReasoningTab: React.FC<ReasoningTabProps> = ({
           <div className="flex items-center mb-4">
             <BrainCircuit className="w-6 h-6 text-yellow-400 mr-3" />
             <h3 className="text-lg font-semibold text-yellow-300">
-              Situational Awareness Level 2: Comprehension
+              Highlights
             </h3>
           </div>
           <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">
