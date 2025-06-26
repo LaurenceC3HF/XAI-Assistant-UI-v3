@@ -1,13 +1,24 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { DAGData } from '../../types';
 import { VisualCard } from './VisualCard';
-import { GitBranch } from 'lucide-react';
+import { GitBranch, Info } from 'lucide-react';
 
-interface DAGVisualProps {
-  dagData?: DAGData;
-  onVisualizationHover?: (elementId: string, visualizationType: string) => () => void;
-  onVisualizationClick?: (elementId: string, visualizationType: string) => void;
-}
+// Example group and explanation definitions (customize as needed)
+const NODE_GROUPS: Record<string, string[]> = {
+  Input: ['deviation', 'speed', 'timing'],
+  Output: ['intent'],
+  Communication: ['communication'],
+  Geography: ['geography']
+};
+const NODE_EXPLANATIONS: Record<string, string> = {
+  deviation: 'Deviation from planned course indicates abnormal behavior.',
+  speed: 'Increase in speed may signal urgency or intent.',
+  timing: 'Timing analysis correlates events with known patterns.',
+  intent: 'Intent assessment is the final inference node.',
+  communication: 'Loss of communication may indicate jamming or intent.',
+  geography: 'Geographic approach vector with tactical significance.'
+  // Add as needed
+};
 
 // Utility: Approximate text width in px for a given label and font settings
 function measureTextWidth(text: string, font = '500 14px Inter, sans-serif') {
@@ -19,12 +30,19 @@ function measureTextWidth(text: string, font = '500 14px Inter, sans-serif') {
   return ctx.measureText(text).width;
 }
 
-export const DAGVisual: React.FC<DAGVisualProps> = ({ 
+interface DAGVisualProps {
+  dagData?: DAGData;
+  onVisualizationHover?: (elementId: string, visualizationType: string) => () => void;
+  onVisualizationClick?: (elementId: string, visualizationType: string) => void;
+}
+
+export const DAGVisual: React.FC<DAGVisualProps> = ({
   dagData,
   onVisualizationHover,
   onVisualizationClick
 }) => {
   const cleanupFunctions = useRef<Record<string, (() => void) | null>>({});
+  const [tooltipNode, setTooltipNode] = useState<string | null>(null);
 
   if (!dagData || !dagData.nodes || !dagData.edges) return null;
 
@@ -36,7 +54,7 @@ export const DAGVisual: React.FC<DAGVisualProps> = ({
   const gap = 32; // horizontal gap between nodes
   const totalWidth = nodeWidths.reduce((a, b) => a + b, 0) + gap * (dagData.nodes.length - 1);
   const canvasWidth = Math.max(520, totalWidth + 32);
-  const canvasHeight = 160;
+  const canvasHeight = 180;
 
   // Calculate x/y positions for each node to avoid overlap
   let x = 16;
@@ -46,12 +64,18 @@ export const DAGVisual: React.FC<DAGVisualProps> = ({
     x += nodeWidths[i] + gap;
   });
 
+  // Helper: find group for a node
+  const getNodeGroup = (nodeId: string) =>
+    Object.entries(NODE_GROUPS).find(([, ids]) => ids.includes(nodeId))?.[0];
+
   const handleMouseEnterNode = (nodeId: string) => {
+    setTooltipNode(nodeId);
     const cleanup = onVisualizationHover?.(nodeId, 'dag_node');
     if (cleanup) cleanupFunctions.current[nodeId] = cleanup;
   };
 
   const handleMouseLeaveNode = (nodeId: string) => {
+    setTooltipNode(null);
     const cleanup = cleanupFunctions.current[nodeId];
     if (cleanup) {
       cleanup();
@@ -62,6 +86,13 @@ export const DAGVisual: React.FC<DAGVisualProps> = ({
   const handleNodeClick = (nodeId: string) => {
     onVisualizationClick?.(nodeId, 'dag_node');
   };
+
+  // Group header rendering (above first node of each group)
+  const groupHeaders: { [nodeIndex: number]: string } = {};
+  Object.entries(NODE_GROUPS).forEach(([group, ids]) => {
+    const idx = dagData.nodes.findIndex(n => ids.includes(n.id));
+    if (idx !== -1) groupHeaders[idx] = group;
+  });
 
   return (
     <VisualCard>
@@ -109,9 +140,10 @@ export const DAGVisual: React.FC<DAGVisualProps> = ({
                 />
               );
             })}
-          {/* Nodes */}
+          {/* Nodes & group headers */}
           {dagData.nodes.map((node, i) => {
             const pos = nodePositions[node.id];
+            const group = getNodeGroup(node.id);
             return (
               <g
                 key={node.id}
@@ -121,6 +153,19 @@ export const DAGVisual: React.FC<DAGVisualProps> = ({
                 onMouseLeave={() => handleMouseLeaveNode(node.id)}
                 onClick={() => handleNodeClick(node.id)}
               >
+                {groupHeaders[i] && (
+                  <text
+                    x={pos.width / 2}
+                    y={-15}
+                    textAnchor="middle"
+                    fontSize={11}
+                    fill="#a3a3a3"
+                    fontWeight={600}
+                    opacity={0.8}
+                  >
+                    {groupHeaders[i]}
+                  </text>
+                )}
                 <rect
                   width={pos.width}
                   height={nodeHeight}
@@ -144,6 +189,18 @@ export const DAGVisual: React.FC<DAGVisualProps> = ({
                   alignmentBaseline="middle"
                   style={{ userSelect: 'none', pointerEvents: 'none' }}
                 >{node.label}</text>
+                {/* Tooltip */}
+                {tooltipNode === node.id && (
+                  <foreignObject x={pos.width + 8} y={-6} width={180} height={54}>
+                    <div className="bg-black bg-opacity-90 text-white text-xs p-2 rounded shadow-lg pointer-events-none" style={{ minWidth: 120 }}>
+                      <div className="flex items-center mb-1">
+                        <Info className="w-3 h-3 mr-1 text-blue-400" />
+                        <span className="font-bold capitalize">{node.label}</span>
+                      </div>
+                      {NODE_EXPLANATIONS[node.id] || "No explanation available."}
+                    </div>
+                  </foreignObject>
+                )}
               </g>
             );
           })}
