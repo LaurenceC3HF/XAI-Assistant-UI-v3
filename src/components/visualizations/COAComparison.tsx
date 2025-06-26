@@ -1,13 +1,23 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { CourseOfAction } from '../../types';
 import { VisualCard } from './VisualCard';
 import { Target, AlertTriangle, CheckCircle } from 'lucide-react';
 
 interface COAComparisonProps {
   coas: CourseOfAction[];
+  onVisualizationHover?: (elementId: string, visualizationType: string) => () => void;
+  onVisualizationClick?: (elementId: string, visualizationType: string) => void;
+  onCOAInteraction?: (coaId: string, coaName: string, interactionType: 'hover' | 'click') => void;
 }
 
-export const COAComparison: React.FC<COAComparisonProps> = ({ coas }) => {
+export const COAComparison: React.FC<COAComparisonProps> = ({ 
+  coas,
+  onVisualizationHover,
+  onVisualizationClick,
+  onCOAInteraction
+}) => {
+  const cleanupFunctions = useRef<Record<string, (() => void) | null>>({});
+
   if (!coas) return null;
 
   const getScoreColor = (score: number) => {
@@ -23,6 +33,27 @@ export const COAComparison: React.FC<COAComparisonProps> = ({ coas }) => {
     return 'border-red-500/50';
   };
 
+  const handleMouseEnterCOA = (coa: CourseOfAction) => {
+    onCOAInteraction?.(coa.id, coa.name, 'hover');
+    const cleanup = onVisualizationHover?.(coa.id, 'coa_card');
+    if (cleanup) {
+      cleanupFunctions.current[coa.id] = cleanup;
+    }
+  };
+
+  const handleMouseLeaveCOA = (coa: CourseOfAction) => {
+    const cleanup = cleanupFunctions.current[coa.id];
+    if (cleanup) {
+      cleanup();
+      cleanupFunctions.current[coa.id] = null;
+    }
+  };
+
+  const handleCOAClick = (coa: CourseOfAction) => {
+    onCOAInteraction?.(coa.id, coa.name, 'click');
+    onVisualizationClick?.(coa.id, 'coa_card');
+  };
+
   return (
     <VisualCard title="Course of Action Analysis">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -31,8 +62,13 @@ export const COAComparison: React.FC<COAComparisonProps> = ({ coas }) => {
             key={coa.id}
             className={`
               relative bg-slate-900/60 border-2 rounded-lg p-4
+              transition-all duration-300 ease-in-out cursor-pointer
+              hover:transform hover:scale-105 hover:shadow-lg
               ${getBorderColor(coa.id, coa.recommendationScore)}
             `}
+            onMouseEnter={() => handleMouseEnterCOA(coa)}
+            onMouseLeave={() => handleMouseLeaveCOA(coa)}
+            onClick={() => handleCOAClick(coa)}
           >
             {coa.id === 'coa2' && (
               <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full flex items-center">
